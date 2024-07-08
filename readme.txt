@@ -125,3 +125,8 @@ git push -u origin master  # or 'main' if that's your default branch
 ```
 
 Now your local Git repository is configured to use SSH with GitHub, and you should be able to push and pull changes securely without being prompted for a username and password each time.
+
+
+
+
+// 2024-07-08 - added SSH key on Zorin Linux on old Nata's Dell
