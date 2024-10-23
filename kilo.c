@@ -50,6 +50,7 @@ struct editorConfig {
     int screencols;
     int numrows;
     erow *row;
+    char *filename;
     struct termios orig_termios;
 };
 struct editorConfig E;
@@ -71,10 +72,10 @@ void disableRawMode(){
 }
 
 void enableRawMode(){
-    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) 
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1)
         die ("tcgetattr");
     atexit(disableRawMode);
-    
+
     struct termios raw = E.orig_termios;
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     raw.c_oflag &= ~(OPOST);
@@ -139,7 +140,7 @@ int editorReadKey(){
             case '8': return END_KEY;
           }
         }
-      } else {      
+      } else {
         switch(seq[1]) {
           case 'A': return ARROW_UP;
           case 'B': return ARROW_DOWN;
@@ -153,8 +154,8 @@ int editorReadKey(){
       switch (seq[1]) {
         case 'H': return HOME_KEY;
         case 'F': return END_KEY;
-      }  
-    }  
+      }
+    }
     return '\x1b';
   } else {
     return c;
@@ -209,12 +210,14 @@ void editorAppendRow(char *s, size_t len) {
 
 /*** file i/o ***/
 void editorOpen(char *filename) {
+  free(E.filename);
+  E.filename = strdup(filename);
   FILE *fp = fopen(filename, "r");
   if (!fp) die("fopen");
   char *line = NULL;
   size_t linecap = 0;
   ssize_t linelen;
- 
+
   while ((linelen = getline(&line, &linecap, fp)) != -1) {
     while (linelen > 0 && (line[linelen - 1] == '\n' ||
                            line[linelen - 1] == '\r'))
@@ -296,12 +299,27 @@ void editorDrawRows(struct abuf *ab) {
   }
 }
 
+void editorDrawStatusBar(struct abuf *ab) {
+  abAppend(ab, "\x1b[7m", 4);
+  char status[80];
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines",
+      E.filename ? E.filename : "[No Name]", E.numrows);
+    if (len > E.screencols) len = E.screencols;
+    abAppend(ab, status, len);
+  while (len < E.screencols) {
+    abAppend(ab, " ", 1);
+    len++;
+  }
+  abAppend(ab, "\x1b[m", 3);
+}
+
 void editorRefreshScreen() {
   editorScroll();
   struct abuf ab = ABUF_INIT;
   abAppend(&ab, "\x1b[?25l", 6);
   abAppend(&ab, "\x1b[H", 3);
   editorDrawRows(&ab);
+  editorDrawStatusBar(&ab);
   char buf[32];
   snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1,
                                             (E.rx - E.coloff) + 1);
@@ -394,6 +412,7 @@ void initEditor(){
   E.coloff = 0;
   E.numrows = 0;
   E.row = NULL;
+  E.filename = NULL;
   if(getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
   E.screenrows -= 1;
 }
@@ -404,7 +423,7 @@ int main(int argc, char *argv[]){
     if(argc >= 2){
       editorOpen(argv[1]);
     }
-   
+
     while (1){
         editorRefreshScreen();
         editorProcessKeypress();
