@@ -130,3 +130,5 @@ Now your local Git repository is configured to use SSH with GitHub, and you shou
 
 
 // 2024-07-08 - added SSH key on Zorin Linux on old Nata's Dell
+
+// 2024-10-23 - added SSH key on Mint Linux on the old Nata's Dell. The Zorin installation does not exist anymore
